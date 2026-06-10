@@ -52,7 +52,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     const { error } = await supabase.from("users").update(data).eq("id", user!.id);
     if (error) { toast.error("فشل الحفظ"); return; }
-    setUser({ ...user!, ...data });
+    setUser({ ...user!, ...data } as any);
     toast.success("تم حفظ التعديلات ✅");
   };
 
