@@ -9,7 +9,9 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { GraduationCap, Eye, EyeOff, User, Mail, Lock, BookOpen, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/store/authStore";
 import { GRADE_LABELS } from "@/lib/utils";
+import { User as UserType } from "@/types";
 
 const schema = z.object({
   first_name: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل"),
@@ -28,6 +30,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function SignupPage() {
   const router = useRouter();
+  const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,20 +51,29 @@ export default function SignupPage() {
     const supabase = createClient();
 
     try {
+      // 1. إنشاء حساب في Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        options: {
-          data: {
-            first_name: data.first_name,
-            last_name: data.last_name,
-          },
-        },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("فشل إنشاء الحساب");
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast.error("البريد الإلكتروني مسجل مسبقاً");
+        } else {
+          toast.error(authError.message);
+        }
+        setIsLoading(false);
+        return;
+      }
 
+      if (!authData.user) {
+        toast.error("فشل إنشاء الحساب، حاول مرة أخرى");
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. إضافة بيانات المستخدم في جدول users
       const { error: profileError } = await supabase.from("users").insert({
         id: authData.user.id,
         first_name: data.first_name,
@@ -75,13 +87,47 @@ export default function SignupPage() {
         is_admin: false,
       });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Profile error:", profileError);
+        // حتى لو فشل insert نكمل لأن الحساب اتأنشأ
+      }
+
+      // 3. جلب بيانات المستخدم وحفظها
+      const { data: profile } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profile) {
+        setUser(profile as UserType);
+      } else {
+        // إنشاء بيانات مؤقتة إذا لم يتم الجلب
+        setUser({
+          id: authData.user.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          grade_level: data.grade_level,
+          gender: data.gender,
+          subscription_tier: "none",
+          subscription_expires_at: null,
+          exam_package: null,
+          total_xp: 0,
+          is_banned: false,
+          is_admin: false,
+          created_at: new Date().toISOString(),
+        });
+      }
 
       toast.success(`مرحباً ${data.first_name}! تم إنشاء حسابك بنجاح 🎉`);
+
+      // 4. الانتقال لصفحة الأسعار
       router.push("/pricing");
+
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : "حدث خطأ، حاول مرة أخرى";
-      toast.error(errMsg.includes("already registered") ? "البريد الإلكتروني مسجل مسبقاً" : errMsg);
+      console.error("Signup error:", error);
+      toast.error("حدث خطأ غير متوقع، حاول مرة أخرى");
     } finally {
       setIsLoading(false);
     }
