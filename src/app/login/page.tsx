@@ -39,32 +39,47 @@ export default function LoginPage() {
         password: data.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        setIsLoading(false);
+        return;
+      }
 
-      const { data: profile } = await supabase
+      // جلب بيانات المستخدم
+      const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
         .eq("id", authData.user.id)
         .single();
 
-      if (profile?.is_banned) {
-        await supabase.auth.signOut();
-        throw new Error("تم حظر حسابك. تواصل مع الإدارة.");
+      if (profileError || !profile) {
+        toast.error("فشل جلب بيانات الحساب");
+        setIsLoading(false);
+        return;
       }
 
-      setUser(profile as User);
-      toast.success(`مرحباً بعودتك ${profile?.first_name}! 👋`);
+      if (profile.is_banned) {
+        await supabase.auth.signOut();
+        toast.error("تم حظر حسابك. تواصل مع الإدارة.");
+        setIsLoading(false);
+        return;
+      }
 
-      if (profile?.is_admin) {
+      // حفظ المستخدم في الـ store
+      setUser(profile as User);
+      toast.success(`مرحباً بعودتك ${profile.first_name}! 👋`);
+
+      // التوجيه الصحيح
+      if (profile.is_admin) {
         router.push("/admin");
-      } else if (!profile?.subscription_tier || profile.subscription_tier === "none") {
+      } else if (!profile.subscription_tier || profile.subscription_tier === "none") {
         router.push("/pricing");
       } else {
         router.push("/dashboard");
       }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "فشل تسجيل الدخول";
-      toast.error(msg.includes("Invalid") ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : msg);
+
+    } catch (error) {
+      toast.error("حدث خطأ غير متوقع، حاول مرة أخرى");
     } finally {
       setIsLoading(false);
     }
