@@ -10,28 +10,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = createClient();
 
-    const fetchUser = async (userId: string) => {
-      const { data } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
-      if (data) setUser(data as User);
-      else setLoading(false);
+    const fetchUserProfile = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (error || !data) {
+          setLoading(false);
+          return;
+        }
+
+        setUser(data as User);
+      } catch {
+        setLoading(false);
+      }
     };
 
+    // تحقق من الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetchUser(session.user.id);
+        fetchUserProfile(session.user.id);
       } else {
         setLoading(false);
       }
     });
 
+    // استمع لتغييرات المصادقة
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          fetchUser(session.user.id);
+          await fetchUserProfile(session.user.id);
         } else {
           setUser(null);
         }
