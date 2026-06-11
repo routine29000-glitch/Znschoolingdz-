@@ -1,8 +1,9 @@
 "use client";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle, GraduationCap, Crown, Zap, BookOpen, Star, ArrowLeft } from "lucide-react";
-import { PLANS } from "@/data/plans";
+import { PLANS, CCP_INFO } from "@/data/plans";
 import { formatCurrency } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 
@@ -48,13 +49,20 @@ const categoryColors: Record<string, { card: string; badge: string; btn: string;
 };
 
 export default function PricingPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const basePlans = PLANS.filter((p) => p.category === "base");
   const examPlans = PLANS.filter((p) => p.category === "exam");
 
-  const getLink = (planId: string) => {
-    if (!user) return "/signup";
-    return `/payment/${planId}`;
+  // التوجيه الصحيح عند الضغط على اشتري الآن
+  const handlePlanClick = (planId: string) => {
+    if (!user) {
+      // غير مسجل → اذهب للتسجيل
+      router.push("/signup");
+    } else {
+      // مسجل → اذهب لصفحة الدفع مباشرة
+      router.push(`/payment/${planId}`);
+    }
   };
 
   return (
@@ -80,7 +88,7 @@ export default function PricingPage() {
                 تسجيل الدخول
               </Link>
               <Link href="/signup" className="bg-olive text-white text-sm font-bold px-4 py-2 rounded-xl">
-                سجل مجاناً
+                سجل الآن
               </Link>
             </div>
           )}
@@ -98,15 +106,13 @@ export default function PricingPage() {
             <Crown size={14} />
             <span>منصة مدفوعة بالكامل — جودة لا تقبل المساومة</span>
           </div>
-          <h1 className="text-5xl font-display font-black text-ink mb-4">
-            اختر باقتك
-          </h1>
+          <h1 className="text-5xl font-display font-black text-ink mb-4">اختر باقتك</h1>
           <p className="text-xl text-ink-light max-w-2xl mx-auto">
             استثمر في مستقبلك. كل باقة مصممة لتضمن لك النجاح والتفوق.
           </p>
         </motion.div>
 
-        {/* Notice: No free plan */}
+        {/* Notice */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -146,19 +152,15 @@ export default function PricingPage() {
                       </span>
                     </div>
                   )}
-
                   <div className={`w-12 h-12 ${colors.icon} rounded-2xl flex items-center justify-center mb-4`}>
                     {categoryIcons[plan.id]}
                   </div>
-
                   <h3 className="text-xl font-display font-black text-ink mb-1">{plan.nameAr}</h3>
                   <p className="text-muted text-sm mb-4">{plan.description}</p>
-
                   <div className="mb-6">
                     <span className="text-4xl font-black text-ink">{formatCurrency(plan.price)}</span>
                     <span className="text-muted text-sm mr-1">/ {plan.period}</span>
                   </div>
-
                   <ul className="space-y-2 mb-6">
                     {plan.features.map((f, j) => (
                       <li key={j} className="flex items-center gap-2 text-sm text-ink-light">
@@ -167,13 +169,12 @@ export default function PricingPage() {
                       </li>
                     ))}
                   </ul>
-
-                  <Link
-                    href={getLink(plan.id)}
+                  <button
+                    onClick={() => handlePlanClick(plan.id)}
                     className={`block w-full ${colors.btn} text-center font-bold py-3 rounded-xl transition-all hover:shadow-lg`}
                   >
                     اشتري الآن
-                  </Link>
+                  </button>
                 </motion.div>
               );
             })}
@@ -217,19 +218,15 @@ export default function PricingPage() {
                       </span>
                     </div>
                   )}
-
                   <div className={`w-12 h-12 ${colors.icon} rounded-2xl flex items-center justify-center mb-4`}>
                     {categoryIcons[plan.id]}
                   </div>
-
                   <h3 className="text-xl font-display font-black text-ink mb-1">{plan.nameAr}</h3>
                   <p className="text-muted text-sm mb-4">{plan.description}</p>
-
                   <div className="mb-6">
                     <span className="text-3xl font-black text-ink">{formatCurrency(plan.price)}</span>
                     <span className="text-muted text-sm mr-1">/ {plan.period}</span>
                   </div>
-
                   <ul className="space-y-2 mb-6">
                     {plan.features.map((f, j) => (
                       <li key={j} className="flex items-center gap-2 text-xs text-ink-light">
@@ -238,13 +235,12 @@ export default function PricingPage() {
                       </li>
                     ))}
                   </ul>
-
-                  <Link
-                    href={getLink(plan.id)}
+                  <button
+                    onClick={() => handlePlanClick(plan.id)}
                     className={`block w-full ${colors.btn} text-center font-bold py-3 rounded-xl transition-all hover:shadow-lg text-sm`}
                   >
                     اشتري الآن
-                  </Link>
+                  </button>
                 </motion.div>
               );
             })}
@@ -265,19 +261,19 @@ export default function PricingPage() {
           <div className="bg-white/10 rounded-2xl p-4 space-y-2 text-sm mb-4">
             <div className="flex justify-between">
               <span className="text-white/60">رقم CCP:</span>
-              <span className="font-bold font-mono">00799999004423597809</span>
+              <span className="font-bold font-mono">{CCP_INFO.number}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-white/60">المستفيد:</span>
-              <span className="font-bold">محمد بن أحمد</span>
+              <span className="font-bold">{CCP_INFO.owner}</span>
             </div>
           </div>
-          <Link
-            href="/signup"
+          <button
+            onClick={() => handlePlanClick("monthly")}
             className="inline-flex items-center gap-2 bg-olive hover:bg-olive-dark text-white font-bold px-6 py-3 rounded-xl transition-colors"
           >
             ابدأ الآن <ArrowLeft size={16} />
-          </Link>
+          </button>
         </motion.div>
       </div>
     </div>
