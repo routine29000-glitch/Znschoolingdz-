@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateQuizQuestions } from "@/lib/gemini";
 
-export const runtime = "nodejs";
-export const maxDuration = 30;
+export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +13,6 @@ export async function POST(req: NextRequest) {
 
     const raw = await generateQuizQuestions({ subject, grade, difficulty, count });
 
-    // Clean and parse JSON
     const cleaned = raw
       .replace(/```json\n?/g, "")
       .replace(/```\n?/g, "")
@@ -24,7 +22,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(parsed);
   } catch (error) {
-    console.error("Quiz generation error:", error);
     return NextResponse.json(
       { error: "فشل توليد الاختبار، حاول مرة أخرى" },
       { status: 500 }
