@@ -1,11 +1,7 @@
 export type Gender = "male" | "female" | "not_specified";
 export type SubscriptionTier = "monthly" | "yearly" | "none";
 export type ExamPackage = "bem" | "bac" | "context" | null;
-export type GradeLevel =
-  | "1ap" | "2ap" | "3ap" | "4ap" | "5ap"
-  | "1am" | "2am" | "3am" | "4am"
-  | "1as" | "2as" | "3as"
-  | "university";
+export type GradeLevel = string;
 
 export interface User {
   id: string;
