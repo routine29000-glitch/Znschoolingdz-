@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getModel, buildTeacherSystemPrompt } from "@/lib/gemini";
 import { GRADE_LABELS } from "@/lib/utils";
 
-export const runtime = "nodejs";
-export const maxDuration = 60;
+export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +18,6 @@ export async function POST(req: NextRequest) {
       gender,
     });
 
-    // Build chat history
     const chatHistory = (history ?? []).slice(-10).map((m: { role: string; content: string }) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
@@ -33,7 +31,6 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // Build message parts
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [];
 
     if (image && imageMimeType) {
@@ -47,7 +44,6 @@ export async function POST(req: NextRequest) {
 
     parts.push({ text: message || "انظر إلى الصورة وأجب عليها" });
 
-    // Stream response
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
