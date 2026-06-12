@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateStudyPlan } from "@/lib/gemini";
 
-export const runtime = "nodejs";
-export const maxDuration = 30;
+export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   try {
