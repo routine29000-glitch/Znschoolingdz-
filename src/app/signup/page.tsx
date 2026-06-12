@@ -74,7 +74,7 @@ export default function SignupPage() {
       }
 
       // 2. إضافة بيانات المستخدم في جدول users
-      const { error: profileError } = await supabase.from("users").insert({
+      await supabase.from("users").insert({
         id: authData.user.id,
         first_name: data.first_name,
         last_name: data.last_name,
@@ -87,39 +87,24 @@ export default function SignupPage() {
         is_admin: false,
       });
 
-      if (profileError) {
-        console.error("Profile error:", profileError);
-        // حتى لو فشل insert نكمل لأن الحساب اتأنشأ
-      }
+      // 3. حفظ بيانات المستخدم مباشرة بدون انتظار جلبها
+      const userProfile: UserType = {
+        id: authData.user.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        grade_level: data.grade_level,
+        gender: data.gender,
+        subscription_tier: "none",
+        subscription_expires_at: null,
+        exam_package: null,
+        total_xp: 0,
+        is_banned: false,
+        is_admin: false,
+        created_at: new Date().toISOString(),
+      };
 
-      // 3. جلب بيانات المستخدم وحفظها
-      const { data: profile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profile) {
-        setUser(profile as UserType);
-      } else {
-        // إنشاء بيانات مؤقتة إذا لم يتم الجلب
-        setUser({
-          id: authData.user.id,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          email: data.email,
-          grade_level: data.grade_level,
-          gender: data.gender,
-          subscription_tier: "none",
-          subscription_expires_at: null,
-          exam_package: null,
-          total_xp: 0,
-          is_banned: false,
-          is_admin: false,
-          created_at: new Date().toISOString(),
-        });
-      }
-
+      setUser(userProfile);
       toast.success(`مرحباً ${data.first_name}! تم إنشاء حسابك بنجاح 🎉`);
 
       // 4. الانتقال لصفحة الأسعار
@@ -141,7 +126,6 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-beige flex items-center justify-center py-12 px-4" dir="rtl">
-      {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-20 right-20 w-72 h-72 bg-olive/5 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-20 w-96 h-96 bg-success/5 rounded-full blur-3xl" />
@@ -152,7 +136,6 @@ export default function SignupPage() {
         animate={{ opacity: 1, y: 0 }}
         className="relative w-full max-w-lg"
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="w-12 h-12 bg-gradient-to-br from-olive to-olive-dark rounded-2xl flex items-center justify-center shadow-xl shadow-olive/25">
@@ -166,10 +149,8 @@ export default function SignupPage() {
           <p className="text-ink-light">أول خطوة نحو التفوق 🚀</p>
         </div>
 
-        {/* Form */}
         <div className="bg-white rounded-3xl shadow-xl shadow-ink/5 p-8 border border-olive/10">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Name row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-ink mb-2">الاسم *</label>
@@ -198,7 +179,6 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-semibold text-ink mb-2">البريد الإلكتروني *</label>
               <div className="relative">
@@ -214,7 +194,6 @@ export default function SignupPage() {
               {errors.email && <p className="text-error text-xs mt-1">{errors.email.message}</p>}
             </div>
 
-            {/* Password */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-ink mb-2">كلمة المرور *</label>
@@ -250,7 +229,6 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {/* Grade Level */}
             <div>
               <label className="block text-sm font-semibold text-ink mb-2">
                 <BookOpen size={14} className="inline ml-1" />
@@ -283,7 +261,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Gender */}
             <div>
               <label className="block text-sm font-semibold text-ink mb-3">
                 <Users size={14} className="inline ml-1" />
@@ -316,7 +293,6 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {/* Submit */}
             <motion.button
               whileTap={{ scale: 0.98 }}
               type="submit"
