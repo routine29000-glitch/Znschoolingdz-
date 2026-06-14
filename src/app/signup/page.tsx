@@ -74,7 +74,7 @@ export default function SignupPage() {
       }
 
       // 2. إضافة بيانات المستخدم في جدول users
-      await supabase.from("users").insert({
+      const { error: insertError } = await supabase.from("users").insert({
         id: authData.user.id,
         first_name: data.first_name,
         last_name: data.last_name,
@@ -86,6 +86,10 @@ export default function SignupPage() {
         is_banned: false,
         is_admin: false,
       });
+
+      if (insertError) {
+        console.error("Insert error:", insertError);
+      }
 
       // 3. حفظ بيانات المستخدم مباشرة بدون انتظار جلبها
       const userProfile: UserType = {
@@ -112,7 +116,8 @@ export default function SignupPage() {
 
     } catch (error: unknown) {
       console.error("Signup error:", error);
-      toast.error("حدث خطأ غير متوقع، حاول مرة أخرى");
+      const msg = error instanceof Error ? error.message : JSON.stringify(error);
+      toast.error(`خطأ: ${msg}`, { duration: 8000 });
     } finally {
       setIsLoading(false);
     }
