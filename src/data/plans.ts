@@ -95,6 +95,6 @@ export const PLANS: Plan[] = [
 
 export const CCP_INFO = {
   number: process.env.CCP_NUMBER || "00799999004423597809",
-  owner: process.env.CCP_OWNER_NAME || "محمد بن أحمد",
+  owner: process.env.CCP_OWNER_NAME || "ziane bouchra abir",
   phone: "0555123456",
 };
