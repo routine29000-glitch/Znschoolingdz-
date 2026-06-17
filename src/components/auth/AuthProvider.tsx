@@ -1,4 +1,4 @@
-"use client";
+here"use client";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/authStore";
@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // تحقق من الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchUserProfile(session.user.id);
@@ -38,11 +37,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // استمع لتغييرات المصادقة
+    // مهم: لا نستدعي أي طلب Supabase async مباشرة هنا
+    // هذا يسبب deadlock معروف في supabase-js (GoTrueClient _acquireLock)
+    // الحل: تأجيل الاستدعاء بـ setTimeout لإخراجه من الـ handler الداخلي
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          const userId = session.user.id;
+          setTimeout(() => {
+            fetchUserProfile(userId);
+          }, 0);
         } else {
           setUser(null);
         }
