@@ -19,6 +19,10 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { setUser } = useAuthStore();
@@ -45,15 +49,44 @@ export default function LoginPage() {
         return;
       }
 
-      // جلب بيانات المستخدم
-      const { data: profile, error: profileError } = await supabase
+      if (!authData.user) {
+        toast.error("فشل تسجيل الدخول، حاول مرة أخرى");
+        setIsLoading(false);
+        return;
+      }
+
+      const userId = authData.user.id;
+
+      // مهم: تأخير بسيط لتجنب تنافس القفل الداخلي في supabase-js
+      // بين onAuthStateChange (في AuthProvider) واستدعاء select() هنا مباشرة
+      await wait(150);
+
+      // جلب بيانات المستخدم مع مهلة قصوى لمنع التجمد الصامت
+      const fetchProfile = supabase
         .from("users")
         .select("*")
-        .eq("id", authData.user.id)
-        .single();
+        .eq("id", userId)
+        .maybeSingle();
 
-      if (profileError || !profile) {
-        toast.error("فشل جلب بيانات الحساب");
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 8000)
+      );
+
+      let profile: User | null = null;
+      try {
+        const result = (await Promise.race([fetchProfile, timeout])) as {
+          data: User | null;
+          error: unknown;
+        };
+        profile = result?.data ?? null;
+      } catch {
+        profile = null;
+      }
+
+      if (!profile) {
+        // فشل الجلب لكن تسجيل الدخول نجح فعلياً — لا نوقف المستخدم بالخطأ
+        toast.success("تم تسجيل الدخول، جاري التحميل...");
+        router.push("/dashboard");
         setIsLoading(false);
         return;
       }
@@ -65,11 +98,9 @@ export default function LoginPage() {
         return;
       }
 
-      // حفظ المستخدم في الـ store
-      setUser(profile as User);
+      setUser(profile);
       toast.success(`مرحباً بعودتك ${profile.first_name}! 👋`);
 
-      // التوجيه الصحيح
       if (profile.is_admin) {
         router.push("/admin");
       } else if (!profile.subscription_tier || profile.subscription_tier === "none") {
@@ -79,6 +110,7 @@ export default function LoginPage() {
       }
 
     } catch (error) {
+      console.error("Login error:", error);
       toast.error("حدث خطأ غير متوقع، حاول مرة أخرى");
     } finally {
       setIsLoading(false);
