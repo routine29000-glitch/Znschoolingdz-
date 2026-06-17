@@ -71,7 +71,6 @@ export default function PaymentPage() {
     const supabase = createClient();
 
     try {
-      // Upload receipt to Supabase Storage
       const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}_${Date.now()}.${fileExt}`;
 
@@ -79,13 +78,14 @@ export default function PaymentPage() {
         .from("receipts")
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw new Error(`فشل رفع الصورة: ${uploadError.message}`);
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from("receipts")
         .getPublicUrl(fileName);
 
-      // Save payment request
       const { error: paymentError } = await supabase
         .from("payment_requests")
         .insert({
@@ -97,12 +97,23 @@ export default function PaymentPage() {
           status: "pending",
         });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        throw new Error(`فشل حفظ الطلب: ${paymentError.message}`);
+      }
 
       setUploaded(true);
       toast.success("تم إرسال طلبك بنجاح! سيتم التفعيل خلال ساعات ✅");
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "حدث خطأ، حاول مرة أخرى");
+      console.error("Payment error:", error);
+      let msg = "حدث خطأ، حاول مرة أخرى";
+      if (error instanceof Error) {
+        msg = error.message;
+      } else if (error && typeof error === "object" && "message" in error) {
+        msg = String((error as { message: unknown }).message);
+      } else if (error) {
+        msg = JSON.stringify(error);
+      }
+      toast.error(msg, { duration: 10000 });
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +152,6 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen bg-beige py-12 px-4" dir="rtl">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/pricing" className="text-muted hover:text-ink transition-colors">
             <ArrowRight size={20} />
@@ -156,14 +166,10 @@ export default function PaymentPage() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-3xl font-display font-black text-ink mb-2">إتمام الدفع</h1>
           <p className="text-ink-light mb-8">ادفع عبر CCP وأرفق صورة الوصل</p>
 
-          {/* Plan summary */}
           <div className="bg-white border border-olive/20 rounded-2xl p-5 mb-6">
             <div className="flex items-center justify-between">
               <div>
@@ -174,7 +180,6 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* CCP Info */}
           <div className="bg-ink text-white rounded-2xl p-6 mb-6">
             <h3 className="text-lg font-bold mb-4">💳 معلومات التحويل عبر CCP</h3>
             <div className="space-y-3">
@@ -183,10 +188,7 @@ export default function PaymentPage() {
                   <p className="text-white/60 text-xs mb-1">رقم CCP</p>
                   <p className="font-mono font-bold text-lg">{CCP_INFO.number}</p>
                 </div>
-                <button
-                  onClick={() => copyToClipboard(CCP_INFO.number)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
+                <button onClick={() => copyToClipboard(CCP_INFO.number)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                   <Copy size={16} className="text-white/60" />
                 </button>
               </div>
@@ -195,10 +197,7 @@ export default function PaymentPage() {
                   <p className="text-white/60 text-xs mb-1">اسم المستفيد</p>
                   <p className="font-bold">{CCP_INFO.owner}</p>
                 </div>
-                <button
-                  onClick={() => copyToClipboard(CCP_INFO.owner)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
+                <button onClick={() => copyToClipboard(CCP_INFO.owner)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                   <Copy size={16} className="text-white/60" />
                 </button>
               </div>
@@ -212,10 +211,8 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* Receipt Upload */}
           <div className="bg-white border border-olive/20 rounded-2xl p-6 mb-6">
             <h3 className="font-bold text-ink mb-4">📎 رفع صورة الوصل</h3>
-
             <label
               htmlFor="receipt"
               className={`cursor-pointer border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all ${
@@ -226,9 +223,7 @@ export default function PaymentPage() {
                 <div>
                   <CheckCircle size={32} className="text-olive mx-auto mb-2" />
                   <p className="font-semibold text-olive">{file.name}</p>
-                  <p className="text-xs text-muted mt-1">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
+                  <p className="text-xs text-muted mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
               ) : (
                 <div>
@@ -237,20 +232,11 @@ export default function PaymentPage() {
                   <p className="text-sm text-muted mt-1">JPG, PNG, PDF — بحد أقصى 5MB</p>
                 </div>
               )}
-              <input
-                id="receipt"
-                type="file"
-                accept="image/*,.pdf"
-                className="sr-only"
-                onChange={handleFileChange}
-              />
+              <input id="receipt" type="file" accept="image/*,.pdf" className="sr-only" onChange={handleFileChange} />
             </label>
 
-            {/* Notes */}
             <div className="mt-4">
-              <label className="block text-sm font-semibold text-ink mb-2">
-                ملاحظات (اختياري)
-              </label>
+              <label className="block text-sm font-semibold text-ink mb-2">ملاحظات (اختياري)</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -261,7 +247,6 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* Submit */}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handleSubmit}
@@ -278,9 +263,7 @@ export default function PaymentPage() {
             )}
           </motion.button>
 
-          <p className="text-center text-xs text-muted mt-4">
-            سيتم مراجعة طلبك وتفعيل الاشتراك خلال 24 ساعة
-          </p>
+          <p className="text-center text-xs text-muted mt-4">سيتم مراجعة طلبك وتفعيل الاشتراك خلال 24 ساعة</p>
         </motion.div>
       </div>
     </div>
